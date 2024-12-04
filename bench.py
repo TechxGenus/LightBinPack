@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from lightbinpack import ffd, ffd_parallel, nf
+from lightbinpack import ffd, ffd_parallel, nf, bfd
 
 def verify_packing(original_lengths, bin_results, max_length):
     """Verify if the packing result is valid."""
@@ -57,6 +57,7 @@ def plot_results(sizes, results_dict):
     styles = {
         'FFD': ('b', 'o'),
         'FFD Parallel': ('y', 'o'),
+        'BFD': ('g', 'o'),
         'NF': ('r', 'o')
     }
     
@@ -112,19 +113,21 @@ def main():
             lambda x, y: ffd_parallel(x, y),
             sizes, lengths, max_length, num_runs
         ),
+        'BFD': run_benchmark(bfd, sizes, lengths, max_length, num_runs),
         'NF': run_benchmark(nf, sizes, lengths, max_length, num_runs)
     }
     
     print("\nBenchmark Test Results:")
-    print("-" * 120)
+    print("-" * 140)
     print(f"{'Input Size':>12} {'FFD (s)':>9} {'FFD Utilization':>17} {'FFD Parallel (s)':>18} {'FFD Parallel Utilization':>26} "
-          f"{'NF (s)':>8} {'NF Utilization':>16}")
-    print("-" * 120)
+          f"{'BFD (s)':>8} {'BFD Utilization':>16} {'NF (s)':>8} {'NF Utilization':>16}")
+    print("-" * 140)
     
     for i, size in enumerate(sizes):
         print(f"{size:>12} "
               f"{results['FFD'][0][i]:>9.3f} {results['FFD'][1][i]:>17.1%} "
               f"{results['FFD Parallel'][0][i]:>18.3f} {results['FFD Parallel'][1][i]:>26.1%} "
+              f"{results['BFD'][0][i]:>8.3f} {results['BFD'][1][i]:>16.1%} "
               f"{results['NF'][0][i]:>8.3f} {results['NF'][1][i]:>16.1%}")
     
     plot_results(sizes, results)

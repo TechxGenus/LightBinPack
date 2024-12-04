@@ -5,6 +5,7 @@ LightBinPack is a lightweight library for solving bin packing problems, implemen
 - First-Fit Decreasing (FFD) - Classic implementation
 - First-Fit Decreasing Parallel - Parallel optimized implementation
 - Next-Fit (NF) - Simple and fast implementation
+- Best-Fit Decreasing (BFD) - Best-Fit Decreasing implementation
 
 ## Installation
 
@@ -15,7 +16,7 @@ pip install lightbinpack
 ## Usage
 
 ```python
-from lightbinpack import ffd, ffd_parallel, nf
+from lightbinpack import ffd, ffd_parallel, nf, bfd
 
 items = [2.5, 1.5, 3.0, 2.0, 1.0]
 bin_capacity = 4.0
@@ -26,7 +27,12 @@ result_ffd_parallel = ffd_parallel(items, bin_capacity, num_threads=4)
 
 result_nf = nf(items, bin_capacity)
 
+result_bfd = bfd(items, bin_capacity)
+
 print(result_ffd)
+print(result_ffd_parallel)
+print(result_nf)
+print(result_bfd)
 ```
 
 ## Algorithm Description
@@ -45,6 +51,11 @@ print(result_ffd)
 - The simplest online packing algorithm
 - Only maintain the current box
 - If the current item cannot be placed, open a new box
+
+### Best-Fit Decreasing (BFD)
+- Sort all items in descending order of size
+- For each item, put it in the box with the smallest remaining capacity that can hold it
+- If there is no suitable box, create a new box
 
 ## Requirements
 

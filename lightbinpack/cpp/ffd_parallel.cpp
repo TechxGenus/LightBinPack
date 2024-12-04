@@ -1,13 +1,78 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <vector>
-#include <set>
 #include <algorithm>
-#include <memory>
 #include <omp.h>
 #include <mutex>
+#include <stdexcept>
 
 namespace py = pybind11;
+
+class SegmentTree {
+public:
+    SegmentTree(size_t size) : size(size) {
+        tree.resize(4 * size, 0.0);
+    }
+
+    void build(const std::vector<double>& bins_remaining_space) {
+        build(1, 0, size - 1, bins_remaining_space);
+    }
+
+    int query(double size_needed) {
+        return query(1, 0, this->size - 1, size_needed);
+    }
+
+    void update(int idx, double value) {
+        update(1, 0, size - 1, idx, value);
+    }
+
+private:
+    size_t size;
+    std::vector<double> tree;
+
+    void build(int node, int start, int end, const std::vector<double>& bins_remaining_space) {
+        if (start > end) return;
+        if (start == end) {
+            if (start < bins_remaining_space.size()) {
+                tree[node] = bins_remaining_space[start];
+            }
+        } else {
+            int mid = (start + end) / 2;
+            build(2 * node, start, mid, bins_remaining_space);
+            build(2 * node + 1, mid + 1, end, bins_remaining_space);
+            tree[node] = std::max(tree[2 * node], tree[2 * node + 1]);
+        }
+    }
+
+    int query(int node, int start, int end, double size_needed) {
+        if (tree[node] < size_needed) {
+            return -1;
+        }
+        if (start == end) {
+            return start;
+        }
+        int mid = (start + end) / 2;
+        int left_result = query(2 * node, start, mid, size_needed);
+        if (left_result != -1) {
+            return left_result;
+        }
+        return query(2 * node + 1, mid + 1, end, size_needed);
+    }
+
+    void update(int node, int start, int end, int idx, double value) {
+        if (start > end || idx < start || idx > end) {
+            return;
+        }
+        if (start == end) {
+            tree[node] = value;
+        } else {
+            int mid = (start + end) / 2;
+            update(2 * node, start, mid, idx, value);
+            update(2 * node + 1, mid + 1, end, idx, value);
+            tree[node] = std::max(tree[2 * node], tree[2 * node + 1]);
+        }
+    }
+};
 
 class Bin {
 public:
@@ -18,12 +83,6 @@ public:
     Bin(double space, size_t index) : 
         remaining_space(space), 
         bin_index(index) {}
-
-    bool operator<(const Bin& other) const {
-        if (remaining_space == other.remaining_space)
-            return bin_index < other.bin_index;
-        return remaining_space < other.remaining_space;
-    }
 };
 
 std::vector<std::vector<int>> ffd_parallel(const std::vector<double>& lengths, double batch_max_length, int num_threads = -1) {
@@ -45,53 +104,59 @@ std::vector<std::vector<int>> ffd_parallel(const std::vector<double>& lengths, d
     }
     
     std::sort(length_pairs.begin(), length_pairs.end(), 
-             std::greater<std::pair<double, int>>());
+              std::greater<std::pair<double, int>>());
 
-    const size_t chunk_size = std::max(size_t(1000), length_pairs.size() / (omp_get_max_threads() * 4));
+    const size_t total_items = length_pairs.size();
+    const size_t chunk_size = std::max(size_t(1000), total_items / (omp_get_max_threads() * 4));
     std::vector<std::vector<std::vector<int>>> thread_results(omp_get_max_threads());
 
     #pragma omp parallel
     {
         const int thread_id = omp_get_thread_num();
-        std::set<Bin> local_bins;
+        std::vector<Bin> local_bins;
+        std::vector<double> bins_remaining_space;
+        size_t max_bins = total_items;
+        bins_remaining_space.reserve(max_bins);
+
+        SegmentTree segment_tree(max_bins);
 
         #pragma omp for schedule(dynamic, chunk_size)
-        for(size_t i = 0; i < length_pairs.size(); i++) {
+        for(size_t i = 0; i < total_items; i++) {
             const auto& pair = length_pairs[i];
             double size = pair.first;
             int orig_idx = pair.second;
 
-            auto it = local_bins.lower_bound(Bin(size, 0));
-            
-            if (it != local_bins.end()) {
-                Bin current_bin = *it;
-                local_bins.erase(it);
-                
-                current_bin.remaining_space -= size;
-                current_bin.items.push_back(orig_idx);
-                
-                local_bins.insert(current_bin);
+            int bin_idx = -1;
+            if (!bins_remaining_space.empty()) {
+                bin_idx = segment_tree.query(size);
+            }
+
+            if (bin_idx != -1 && bin_idx < local_bins.size()) {
+                Bin& bin = local_bins[bin_idx];
+                bin.remaining_space -= size;
+                bin.items.push_back(orig_idx);
+                bins_remaining_space[bin_idx] = bin.remaining_space;
+                segment_tree.update(bin_idx, bins_remaining_space[bin_idx]);
             } else {
-                size_t new_index = thread_results[thread_id].size();
-                thread_results[thread_id].emplace_back();
-                
-                Bin new_bin(batch_max_length - size, new_index);
+                Bin new_bin(batch_max_length - size, local_bins.size());
                 new_bin.items.push_back(orig_idx);
-                local_bins.insert(new_bin);
+                local_bins.push_back(new_bin);
+                bins_remaining_space.push_back(new_bin.remaining_space);
+                segment_tree.update(local_bins.size() - 1, new_bin.remaining_space);
             }
         }
 
-        thread_results[thread_id].resize(thread_results[thread_id].size());
-        for (const auto& bin : local_bins) {
-            thread_results[thread_id][bin.bin_index] = bin.items;
+        thread_results[thread_id].resize(local_bins.size());
+        for (size_t idx = 0; idx < local_bins.size(); ++idx) {
+            thread_results[thread_id][idx] = local_bins[idx].items;
         }
     }
 
     std::vector<std::vector<int>> final_result;
     for (const auto& thread_result : thread_results) {
         final_result.insert(final_result.end(), 
-                          thread_result.begin(), 
-                          thread_result.end());
+                            thread_result.begin(), 
+                            thread_result.end());
     }
 
     return final_result;

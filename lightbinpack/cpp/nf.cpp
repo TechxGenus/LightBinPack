@@ -34,4 +34,4 @@ std::vector<std::vector<int>> nf(const std::vector<double>& lengths, double batc
 PYBIND11_MODULE(nf, m) {
     m.doc() = "NF (Next Fit) algorithm implementation in C++";
     m.def("nf", &nf, "NF algorithm");
-} 
+}
