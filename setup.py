@@ -25,14 +25,6 @@ ext_modules = [
         extra_link_args=extra_link_args,
     ),
     Extension(
-        "lightbinpack.cpp.ffd_parallel",
-        ["lightbinpack/cpp/ffd_parallel.cpp"],
-        include_dirs=[pybind11.get_include()],
-        language='c++',
-        extra_compile_args=extra_compile_args,
-        extra_link_args=extra_link_args,
-    ),
-    Extension(
         "lightbinpack.cpp.nf",
         ["lightbinpack/cpp/nf.cpp"],
         include_dirs=[pybind11.get_include()],
@@ -48,11 +40,19 @@ ext_modules = [
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
+    Extension(
+        "lightbinpack.cpp.obfd",
+        ["lightbinpack/cpp/obfd.cpp"],
+        include_dirs=[pybind11.get_include()],
+        language='c++',
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+    ),
 ]
 
 setup(
     name="lightbinpack",
-    version="0.0.2",
+    version="0.0.3",
     author="TechxGenus",
     description="A lightweight library for solving bin packing problems",
     url="https://github.com/TechxGenus/LightBinPack",

@@ -3,9 +3,9 @@
 LightBinPack is a lightweight library for solving bin packing problems, implementing core algorithms in C++ and providing a Python interface. The following algorithms are currently implemented:
 
 - First-Fit Decreasing (FFD) - Classic implementation
-- First-Fit Decreasing Parallel - Parallel optimized implementation
 - Next-Fit (NF) - Simple and fast implementation
 - Best-Fit Decreasing (BFD) - Best-Fit Decreasing implementation
+- Optimized Best-Fit Decreasing (OBFD) - Optimized BFD for integer lengths
 
 ## Installation
 
@@ -16,23 +16,26 @@ pip install lightbinpack
 ## Usage
 
 ```python
-from lightbinpack import ffd, ffd_parallel, nf, bfd
+from lightbinpack import ffd, nf, bfd, obfd
 
 items = [2.5, 1.5, 3.0, 2.0, 1.0]
 bin_capacity = 4.0
 
 result_ffd = ffd(items, bin_capacity)
 
-result_ffd_parallel = ffd_parallel(items, bin_capacity, num_threads=4)
-
 result_nf = nf(items, bin_capacity)
 
 result_bfd = bfd(items, bin_capacity)
 
+# For integer lengths (optimized version)
+items_int = [2, 1, 3, 2, 1]
+bin_capacity_int = 4
+result_obfd = obfd(items_int, bin_capacity_int, item_max_length=3)
+
 print(result_ffd)
-print(result_ffd_parallel)
 print(result_nf)
 print(result_bfd)
+print(result_obfd)
 ```
 
 ## Algorithm Description
@@ -41,11 +44,6 @@ print(result_bfd)
 1. Sort all items in descending order of size
 2. For each item, put it in the first box that can hold it
 3. If there is no suitable box, create a new box
-
-### First-Fit Decreasing Parallel
-- Parallel optimized version based on FFD algorithm
-- Use OpenMP to implement multi-threaded processing
-- Suitable for large-scale datasets
 
 ### Next-Fit (NF)
 - The simplest online packing algorithm
@@ -56,6 +54,13 @@ print(result_bfd)
 - Sort all items in descending order of size
 - For each item, put it in the box with the smallest remaining capacity that can hold it
 - If there is no suitable box, create a new box
+
+### Optimized Best-Fit Decreasing (OBFD)
+- Optimized version of BFD for integer lengths
+- Uses counting sort instead of comparison sort
+- Employs segment tree for efficient bin search
+- Time complexity: O(N log L) where L is the maximum length
+- Suitable for cases where item lengths are integers and L << N
 
 ## Requirements
 

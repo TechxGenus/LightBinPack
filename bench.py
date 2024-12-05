@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from lightbinpack import ffd, ffd_parallel, nf, bfd
+from lightbinpack import ffd, nf, bfd, obfd
 
 def verify_packing(original_lengths, bin_results, max_length):
     """Verify if the packing result is valid."""
@@ -33,10 +33,7 @@ def run_benchmark(algorithm, sizes, lengths, max_length, num_runs=3):
         for _ in range(num_runs):
             data = lengths[:size]
             start = time.time()
-            if algorithm.__name__ == 'ffd_parallel':
-                result = algorithm(data, max_length)
-            else:
-                result = algorithm(data, max_length)
+            result = algorithm(data, max_length)
             end = time.time()
             
             assert verify_packing(data, result, max_length), \
@@ -52,12 +49,12 @@ def run_benchmark(algorithm, sizes, lengths, max_length, num_runs=3):
 def plot_results(sizes, results_dict):
     """Plot performance comparison chart, including time and utilization sub-charts"""
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
     
     styles = {
         'FFD': ('b', 'o'),
-        'FFD Parallel': ('y', 'o'),
         'BFD': ('g', 'o'),
+        'OBFD': ('m', 'o'),
         'NF': ('r', 'o')
     }
     
@@ -95,12 +92,12 @@ def plot_results(sizes, results_dict):
     plt.tight_layout()
     plt.subplots_adjust(right=0.9)
     
-    plt.savefig('benchmark_results.png', bbox_inches='tight')
+    plt.savefig('tmp/benchmark_results.png', bbox_inches='tight')
     plt.close()
 
 def main():
-    sizes = [10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000]
-    max_length = 50000
+    sizes = [10000, 20000, 50000, 100000, 200000, 500000, 1000000]
+    batch_max_length = 50000
     num_runs = 5
     
     np.random.seed(0)
@@ -108,27 +105,24 @@ def main():
     lengths = np.random.randint(1000, 20000, max_data_size)
     
     results = {
-        'FFD': run_benchmark(ffd, sizes, lengths, max_length, num_runs),
-        'FFD Parallel': run_benchmark(
-            lambda x, y: ffd_parallel(x, y),
-            sizes, lengths, max_length, num_runs
-        ),
-        'BFD': run_benchmark(bfd, sizes, lengths, max_length, num_runs),
-        'NF': run_benchmark(nf, sizes, lengths, max_length, num_runs)
+        'FFD': run_benchmark(ffd, sizes, lengths, batch_max_length, num_runs),
+        'BFD': run_benchmark(bfd, sizes, lengths, batch_max_length, num_runs),
+        'OBFD': run_benchmark(obfd, sizes, lengths, batch_max_length, num_runs),
+        'NF': run_benchmark(nf, sizes, lengths, batch_max_length, num_runs)
     }
     
     print("\nBenchmark Test Results:")
-    print("-" * 140)
-    print(f"{'Input Size':>12} {'FFD (s)':>9} {'FFD Utilization':>17} {'FFD Parallel (s)':>18} {'FFD Parallel Utilization':>26} "
-          f"{'BFD (s)':>8} {'BFD Utilization':>16} {'NF (s)':>8} {'NF Utilization':>16}")
-    print("-" * 140)
+    print("-" * 97)
+    print(f"{'Input Size':>12} {'FFD (s)':>9} {'FFD Util':>10} "
+          f"{'BFD (s)':>8} {'BFD Util':>10} {'OBFD (s)':>10} {'OBFD Util':>10} {'NF (s)':>8} {'NF Util':>10}")
+    print("-" * 97)
     
     for i, size in enumerate(sizes):
         print(f"{size:>12} "
-              f"{results['FFD'][0][i]:>9.3f} {results['FFD'][1][i]:>17.1%} "
-              f"{results['FFD Parallel'][0][i]:>18.3f} {results['FFD Parallel'][1][i]:>26.1%} "
-              f"{results['BFD'][0][i]:>8.3f} {results['BFD'][1][i]:>16.1%} "
-              f"{results['NF'][0][i]:>8.3f} {results['NF'][1][i]:>16.1%}")
+              f"{results['FFD'][0][i]:>9.3f} {results['FFD'][1][i]:>10.1%} "
+              f"{results['BFD'][0][i]:>8.3f} {results['BFD'][1][i]:>10.1%} "
+              f"{results['OBFD'][0][i]:>10.3f} {results['OBFD'][1][i]:>10.1%} "
+              f"{results['NF'][0][i]:>8.3f} {results['NF'][1][i]:>10.1%}")
     
     plot_results(sizes, results)
     print("\nThe result chart has been saved as 'benchmark_results.png'")
