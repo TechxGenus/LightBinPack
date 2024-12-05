@@ -3,9 +3,11 @@
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
+#include <omp.h>
 
 namespace py = pybind11;
 
+// Reuse the IterativeSegmentTree from obfd.cpp
 class IterativeSegmentTree {
 private:
     int n;
@@ -52,51 +54,31 @@ public:
     }
 };
 
-std::vector<std::vector<int>> obfd(
+std::vector<std::vector<int>> obfd_worker(
     const std::vector<int>& lengths,
+    const std::vector<int>& indices,
     int batch_max_length,
-    int item_max_length = -1
+    int item_max_length
 ) {
-    if (lengths.empty() || batch_max_length <= 0) {
+    if (indices.empty()) {
         return {};
     }
 
-    if (item_max_length <= 0) {
-        item_max_length = 0;
-        for (int length : lengths) {
-            item_max_length = std::max(item_max_length, length);
-        }
-    }
-
     std::vector<std::vector<int>> count(item_max_length + 1);
-    count.reserve(item_max_length + 1);
-    for (size_t i = 0; i < lengths.size(); ++i) {
-        int len = lengths[i];
-        if (len > batch_max_length) {
-            throw std::runtime_error("Item size exceeds batch max length");
-        }
-        if (len > item_max_length) {
-            throw std::runtime_error("Item size exceeds item max length");
-        }
-        if (len <= 0) {
-            throw std::runtime_error("Item size must be positive");
-        }
-        count[len].push_back(i);
+    for (int idx : indices) {
+        int len = lengths[idx];
+        count[len].push_back(idx);
     }
 
     IterativeSegmentTree seg_tree(batch_max_length);
-
     std::vector<std::vector<size_t>> capacity_to_bins(batch_max_length + 1);
     std::vector<size_t> bins_remaining;
-    bins_remaining.reserve(lengths.size() / 2);
+    std::vector<std::vector<int>> bins_items;
 
     bins_remaining.push_back(batch_max_length);
     capacity_to_bins[batch_max_length].push_back(0);
     seg_tree.update(batch_max_length, batch_max_length);
-
-    std::vector<std::vector<int>> bins_items;
     bins_items.emplace_back();
-    bins_items[0].reserve(lengths.size() / 2);
 
     for (int size = item_max_length; size >= 1; --size) {
         for (int orig_idx : count[size]) {
@@ -111,7 +93,6 @@ std::vector<std::vector<int>> obfd(
 
                 int new_capacity = bins_remaining[bin_idx] - size;
                 bins_remaining[bin_idx] = new_capacity;
-
                 bins_items[bin_idx].push_back(orig_idx);
 
                 capacity_to_bins[new_capacity].push_back(bin_idx);
@@ -134,10 +115,89 @@ std::vector<std::vector<int>> obfd(
     return bins_items;
 }
 
-PYBIND11_MODULE(obfd, m) {
-    m.doc() = "Optimized BFD (Best Fit Decreasing) algorithm implementation for integer lengths";
-    m.def("obfd", &obfd, "Optimized BFD algorithm",
+std::vector<std::vector<int>> obfdp(
+    const std::vector<int>& lengths,
+    int batch_max_length,
+    int item_max_length = -1,
+    double repack_threshold = 0.5
+) {
+    if (lengths.empty() || batch_max_length <= 0) {
+        return {};
+    }
+
+    if (item_max_length <= 0) {
+        item_max_length = 0;
+        for (int length : lengths) {
+            item_max_length = std::max(item_max_length, length);
+        }
+    }
+
+    // Input validation
+    for (int len : lengths) {
+        if (len > batch_max_length) {
+            throw std::runtime_error("Item size exceeds batch max length");
+        }
+        if (len > item_max_length) {
+            throw std::runtime_error("Item size exceeds item max length");
+        }
+        if (len <= 0) {
+            throw std::runtime_error("Item size must be positive");
+        }
+    }
+
+    // Determine number of parallel groups based on input size
+    int num_threads = 1;
+    if (lengths.size() > 10000) num_threads = 2;
+    if (lengths.size() > 50000) num_threads = 4;
+    if (lengths.size() > 200000) num_threads = omp_get_max_threads();
+
+    // Split data into groups
+    std::vector<std::vector<int>> groups(num_threads);
+    for (size_t i = 0; i < lengths.size(); ++i) {
+        groups[i % num_threads].push_back(i);
+    }
+
+    // Process groups in parallel
+    std::vector<std::vector<std::vector<int>>> parallel_results(num_threads);
+    #pragma omp parallel for num_threads(num_threads)
+    for (int i = 0; i < num_threads; ++i) {
+        parallel_results[i] = obfd_worker(lengths, groups[i], batch_max_length, item_max_length);
+    }
+
+    // Collect items for repacking
+    std::vector<int> repack_items;
+    std::vector<std::vector<int>> final_bins;
+
+    // Process results from each group
+    for (const auto& group_result : parallel_results) {
+        for (const auto& bin : group_result) {
+            int bin_sum = 0;
+            for (int idx : bin) {
+                bin_sum += lengths[idx];
+            }
+            
+            if (static_cast<double>(bin_sum) / batch_max_length < repack_threshold) {
+                repack_items.insert(repack_items.end(), bin.begin(), bin.end());
+            } else {
+                final_bins.push_back(bin);
+            }
+        }
+    }
+
+    // Repack items if necessary
+    if (!repack_items.empty()) {
+        auto repacked = obfd_worker(lengths, repack_items, batch_max_length, item_max_length);
+        final_bins.insert(final_bins.end(), repacked.begin(), repacked.end());
+    }
+
+    return final_bins;
+}
+
+PYBIND11_MODULE(obfdp, m) {
+    m.doc() = "Parallel Optimized BFD (Best Fit Decreasing) algorithm implementation";
+    m.def("obfdp", &obfdp, "Parallel Optimized BFD algorithm",
           py::arg("lengths"),
           py::arg("batch_max_length"),
-          py::arg("item_max_length") = -1);
+          py::arg("item_max_length") = -1,
+          py::arg("repack_threshold") = 0.5);
 }

@@ -6,6 +6,7 @@ LightBinPack is a lightweight library for solving bin packing problems, implemen
 - Next-Fit (NF) - Simple and fast implementation
 - Best-Fit Decreasing (BFD) - Best-Fit Decreasing implementation
 - Optimized Best-Fit Decreasing (OBFD) - Optimized BFD for integer lengths
+- Optimized Best-Fit Decreasing Parallel (OBFDP) - Parallel version of OBFD for large integer lengths
 
 ## Installation
 
@@ -16,26 +17,26 @@ pip install lightbinpack
 ## Usage
 
 ```python
-from lightbinpack import ffd, nf, bfd, obfd
+from lightbinpack import ffd, nf, bfd, obfd, obfdp
 
 items = [2.5, 1.5, 3.0, 2.0, 1.0]
 bin_capacity = 4.0
 
 result_ffd = ffd(items, bin_capacity)
-
 result_nf = nf(items, bin_capacity)
-
 result_bfd = bfd(items, bin_capacity)
 
-# For integer lengths (optimized version)
 items_int = [2, 1, 3, 2, 1]
 bin_capacity_int = 4
-result_obfd = obfd(items_int, bin_capacity_int, item_max_length=3)
+
+result_obfd = obfd(items_int, bin_capacity_int)
+result_obfdp = obfdp(items_int, bin_capacity_int)
 
 print(result_ffd)
 print(result_nf)
 print(result_bfd)
 print(result_obfd)
+print(result_obfdp)
 ```
 
 ## Algorithm Description
@@ -61,6 +62,14 @@ print(result_obfd)
 - Employs segment tree for efficient bin search
 - Time complexity: O(N log L) where L is the maximum length
 - Suitable for cases where item lengths are integers and L << N
+
+### Optimized Best-Fit Decreasing Parallel (OBFDP)
+- Parallel version of OBFD for large integer lengths
+- Automatically splits items into multiple chunks for parallel processing
+- Uses OpenMP for parallel execution
+- Includes a repack phase for better bin utilization
+- Suitable for large datasets with integer lengths
+- Adaptive to available CPU cores and input size
 
 ## Requirements
 

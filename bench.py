@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from lightbinpack import ffd, nf, bfd, obfd
+from lightbinpack import ffd, nf, bfd, obfd, obfdp
 
 def verify_packing(original_lengths, bin_results, max_length):
     """Verify if the packing result is valid."""
@@ -55,6 +55,7 @@ def plot_results(sizes, results_dict):
         'FFD': ('b', 'o'),
         'BFD': ('g', 'o'),
         'OBFD': ('m', 'o'),
+        'OBFDP': ('c', 'o'),
         'NF': ('r', 'o')
     }
     
@@ -108,20 +109,23 @@ def main():
         'FFD': run_benchmark(ffd, sizes, lengths, batch_max_length, num_runs),
         'BFD': run_benchmark(bfd, sizes, lengths, batch_max_length, num_runs),
         'OBFD': run_benchmark(obfd, sizes, lengths, batch_max_length, num_runs),
+        'OBFDP': run_benchmark(obfdp, sizes, lengths, batch_max_length, num_runs),
         'NF': run_benchmark(nf, sizes, lengths, batch_max_length, num_runs)
     }
     
     print("\nBenchmark Test Results:")
-    print("-" * 97)
+    print("-" * 119)
     print(f"{'Input Size':>12} {'FFD (s)':>9} {'FFD Util':>10} "
-          f"{'BFD (s)':>8} {'BFD Util':>10} {'OBFD (s)':>10} {'OBFD Util':>10} {'NF (s)':>8} {'NF Util':>10}")
-    print("-" * 97)
+          f"{'BFD (s)':>8} {'BFD Util':>10} {'OBFD (s)':>10} {'OBFD Util':>10} "
+          f"{'OBFDP (s)':>10} {'OBFDP Util':>10} {'NF (s)':>8} {'NF Util':>10}")
+    print("-" * 119)
     
     for i, size in enumerate(sizes):
         print(f"{size:>12} "
               f"{results['FFD'][0][i]:>9.3f} {results['FFD'][1][i]:>10.1%} "
               f"{results['BFD'][0][i]:>8.3f} {results['BFD'][1][i]:>10.1%} "
               f"{results['OBFD'][0][i]:>10.3f} {results['OBFD'][1][i]:>10.1%} "
+              f"{results['OBFDP'][0][i]:>10.3f} {results['OBFDP'][1][i]:>10.1%} "
               f"{results['NF'][0][i]:>8.3f} {results['NF'][1][i]:>10.1%}")
     
     plot_results(sizes, results)
