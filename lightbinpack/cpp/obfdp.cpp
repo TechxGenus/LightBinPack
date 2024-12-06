@@ -7,7 +7,6 @@
 
 namespace py = pybind11;
 
-// Reuse the IterativeSegmentTree from obfd.cpp
 class IterativeSegmentTree {
 private:
     int n;
@@ -118,8 +117,7 @@ std::vector<std::vector<int>> obfd_worker(
 std::vector<std::vector<int>> obfdp(
     const std::vector<int>& lengths,
     int batch_max_length,
-    int item_max_length = -1,
-    double repack_threshold = 0.5
+    int item_max_length = -1
 ) {
     if (lengths.empty() || batch_max_length <= 0) {
         return {};
@@ -132,7 +130,6 @@ std::vector<std::vector<int>> obfdp(
         }
     }
 
-    // Input validation
     for (int len : lengths) {
         if (len > batch_max_length) {
             throw std::runtime_error("Item size exceeds batch max length");
@@ -145,46 +142,33 @@ std::vector<std::vector<int>> obfdp(
         }
     }
 
-    // Determine number of parallel groups based on input size
     int num_threads = 1;
-    if (lengths.size() > 10000) num_threads = 2;
-    if (lengths.size() > 50000) num_threads = 4;
-    if (lengths.size() > 200000) num_threads = omp_get_max_threads();
+    if (lengths.size() > 20000) num_threads = 2;
+    if (lengths.size() > 100000) num_threads = 4;
+    if (lengths.size() > 500000) num_threads = omp_get_max_threads();
 
-    // Split data into groups
     std::vector<std::vector<int>> groups(num_threads);
     for (size_t i = 0; i < lengths.size(); ++i) {
         groups[i % num_threads].push_back(i);
     }
 
-    // Process groups in parallel
     std::vector<std::vector<std::vector<int>>> parallel_results(num_threads);
     #pragma omp parallel for num_threads(num_threads)
     for (int i = 0; i < num_threads; ++i) {
         parallel_results[i] = obfd_worker(lengths, groups[i], batch_max_length, item_max_length);
     }
 
-    // Collect items for repacking
     std::vector<int> repack_items;
     std::vector<std::vector<int>> final_bins;
 
-    // Process results from each group
     for (const auto& group_result : parallel_results) {
-        for (const auto& bin : group_result) {
-            int bin_sum = 0;
-            for (int idx : bin) {
-                bin_sum += lengths[idx];
-            }
-            
-            if (static_cast<double>(bin_sum) / batch_max_length < repack_threshold) {
-                repack_items.insert(repack_items.end(), bin.begin(), bin.end());
-            } else {
-                final_bins.push_back(bin);
-            }
+        if (!group_result.empty()) {
+            final_bins.insert(final_bins.end(), group_result.begin(), group_result.end() - 1);
+            const auto& last_bin = group_result.back();
+            repack_items.insert(repack_items.end(), last_bin.begin(), last_bin.end());
         }
     }
 
-    // Repack items if necessary
     if (!repack_items.empty()) {
         auto repacked = obfd_worker(lengths, repack_items, batch_max_length, item_max_length);
         final_bins.insert(final_bins.end(), repacked.begin(), repacked.end());
@@ -198,6 +182,5 @@ PYBIND11_MODULE(obfdp, m) {
     m.def("obfdp", &obfdp, "Parallel Optimized BFD algorithm",
           py::arg("lengths"),
           py::arg("batch_max_length"),
-          py::arg("item_max_length") = -1,
-          py::arg("repack_threshold") = 0.5);
+          py::arg("item_max_length") = -1);
 }

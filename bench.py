@@ -88,7 +88,7 @@ def plot_results(sizes, results_dict):
     max_util = max(max(utils) for _, utils in results_dict.values())
     util_margin = (max_util - min_util) * 0.1
     ax2.set_ylim(min_util - util_margin, max_util + util_margin)
-    ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: '{:.1%}'.format(y)))
+    ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: '{:.3%}'.format(y)))
     
     plt.tight_layout()
     plt.subplots_adjust(right=0.9)
@@ -114,19 +114,19 @@ def main():
     }
     
     print("\nBenchmark Test Results:")
-    print("-" * 119)
+    print("-" * 123)
     print(f"{'Input Size':>12} {'FFD (s)':>9} {'FFD Util':>10} "
-          f"{'BFD (s)':>8} {'BFD Util':>10} {'OBFD (s)':>10} {'OBFD Util':>10} "
-          f"{'OBFDP (s)':>10} {'OBFDP Util':>10} {'NF (s)':>8} {'NF Util':>10}")
-    print("-" * 119)
+          f"{'BFD (s)':>9} {'BFD Util':>10} {'OBFD (s)':>10} {'OBFD Util':>11} "
+          f"{'OBFDP (s)':>11} {'OBFDP Util':>12} {'NF (s)':>8} {'NF Util':>9}")
+    print("-" * 123)
     
     for i, size in enumerate(sizes):
         print(f"{size:>12} "
-              f"{results['FFD'][0][i]:>9.3f} {results['FFD'][1][i]:>10.1%} "
-              f"{results['BFD'][0][i]:>8.3f} {results['BFD'][1][i]:>10.1%} "
-              f"{results['OBFD'][0][i]:>10.3f} {results['OBFD'][1][i]:>10.1%} "
-              f"{results['OBFDP'][0][i]:>10.3f} {results['OBFDP'][1][i]:>10.1%} "
-              f"{results['NF'][0][i]:>8.3f} {results['NF'][1][i]:>10.1%}")
+              f"{results['FFD'][0][i]:>9.3f} {results['FFD'][1][i]:>10.3%} "
+              f"{results['BFD'][0][i]:>9.3f} {results['BFD'][1][i]:>10.3%} "
+              f"{results['OBFD'][0][i]:>10.3f} {results['OBFD'][1][i]:>11.3%} "
+              f"{results['OBFDP'][0][i]:>11.3f} {results['OBFDP'][1][i]:>12.3%} "
+              f"{results['NF'][0][i]:>8.3f} {results['NF'][1][i]:>9.3%}")
     
     plot_results(sizes, results)
     print("\nThe result chart has been saved as 'benchmark_results.png'")
