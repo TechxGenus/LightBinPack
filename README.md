@@ -7,6 +7,7 @@ LightBinPack is a lightweight library for solving bin packing problems, implemen
 - Best-Fit Decreasing (BFD) - Best-Fit Decreasing implementation
 - Optimized Best-Fit Decreasing (OBFD) - Optimized BFD for integer lengths
 - Optimized Best-Fit Decreasing Parallel (OBFDP) - Parallel version of OBFD for large integer lengths
+- Optimized Grouped Best-Fit Decreasing (OGBFD) - Group-based BFD for better load balancing
 
 ## Installation
 
@@ -17,7 +18,7 @@ pip install lightbinpack
 ## Usage
 
 ```python
-from lightbinpack import ffd, nf, bfd, obfd, obfdp
+from lightbinpack import ffd, nf, bfd, obfd, obfdp, ogbfd
 
 items = [2.5, 1.5, 3.0, 2.0, 1.0]
 bin_capacity = 4.0
@@ -31,12 +32,14 @@ bin_capacity_int = 4
 
 result_obfd = obfd(items_int, bin_capacity_int)
 result_obfdp = obfdp(items_int, bin_capacity_int)
+result_ogbfd = ogbfd(items_int, bin_capacity_int, bins_per_group=2)
 
 print(result_ffd)
 print(result_nf)
 print(result_bfd)
 print(result_obfd)
 print(result_obfdp)
+print(result_ogbfd)
 ```
 
 ## Algorithm Description
@@ -70,6 +73,13 @@ print(result_obfdp)
 - Includes a repack phase for better bin utilization
 - Suitable for large datasets with integer lengths
 - Adaptive to available CPU cores and input size
+
+### Optimized Grouped Best-Fit Decreasing (OGBFD)
+- Group-based version of BFD for better load balancing
+- Uses segment tree for efficient group capacity tracking
+- Maintains multiple bins per group for balanced distribution
+- Time complexity: O(N log L) where L is the maximum length
+- Suitable for scenarios requiring balanced bin utilization
 
 ## Requirements
 
