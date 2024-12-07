@@ -104,7 +104,7 @@ print(result_ogbfdp)
 
 ## Algorithm Selection Guide
 
-For real-time applications with streaming data or limited memory, Next-Fit (NF) is the simplest choice despite using more bins. First-Fit Decreasing (FFD) and Best-Fit Decreasing (BFD) are more complex but offer better bin utilization. When working with integer-length items, such as token lengths, Optimized Best-Fit Decreasing (OBFD) excels in memory and storage optimization scenarios. For large-scale integer datasets, OBFDP leverages parallel processing for improved performance. For the distributed training scenario of LLM with quadratic attention, OGBFD provides both better bin utilization and load balancing, and OGBFDP further accelerates the process with parallel execution.
+For real-time applications with streaming data or limited memory, Next-Fit (NF) is the simplest choice despite using more bins. First-Fit Decreasing (FFD) and Best-Fit Decreasing (BFD) are more complex but offer better bin utilization. When working with integer-length items, such as token lengths, Optimized Best-Fit Decreasing (OBFD) excels in memory and storage optimization scenarios. For large-scale integer datasets, OBFDP leverages parallel processing for improved performance. For the distributed training scenario of LLM with quadratic attention, OGBFD provides both better bin utilization and load balancing, and OGBFDP further accelerates the process with parallel execution, while it may slightly reduce packing efficiency and load balancing.
 
 To determine which algorithm offers the best efficiency and performance for your infrastructure, consider running `bench.py` and `bench_balance.py` to analyze the detailed metrics and results.
 

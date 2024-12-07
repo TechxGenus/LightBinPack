@@ -300,15 +300,51 @@ std::vector<std::vector<std::vector<int>>> ogbfdp(
     }
 
     if (final_result.size() >= 2) {
-        auto& last_group = final_result.back();
-        const auto& first_group = final_result.front();
-        
-        int replacement_idx = 0;
-        for (size_t i = 0; i < last_group.size(); ++i) {
-            if (last_group[i].empty()) {
-                if (replacement_idx < first_group.size()) {
-                    last_group[i] = first_group[replacement_idx];
-                    replacement_idx++;
+        auto& target_group = final_result.back();
+        const auto& source_group = final_result.front();
+
+        std::vector<size_t> empty_bin_indices;
+        for (size_t bin_idx = 0; bin_idx < target_group.size(); ++bin_idx) {
+            if (target_group[bin_idx].empty()) {
+                empty_bin_indices.push_back(bin_idx);
+            }
+        }
+
+        bool fallback_to_repeat = false;
+        if (!empty_bin_indices.empty()) {
+            bool early_termination = false;
+            for (int group_idx = final_result.size() - 2; 
+                 group_idx >= 0 && !empty_bin_indices.empty() && !early_termination; 
+                 --group_idx) {
+                
+                for (int bin_idx = final_result[group_idx].size() - 1; 
+                     bin_idx >= 0 && !empty_bin_indices.empty() && !early_termination; 
+                     --bin_idx) {
+                    
+                    auto& donor_bin = final_result[group_idx][bin_idx];
+                    if (donor_bin.size() >= 2) {
+                        int item = donor_bin.back();
+                        donor_bin.pop_back();
+                        
+                        size_t target_bin_idx = empty_bin_indices.back();
+                        empty_bin_indices.pop_back();
+                        target_group[target_bin_idx].push_back(item);
+                    } else if (donor_bin.size() <= 1) {
+                        early_termination = true;
+                    }
+                }
+            }
+
+            if (!empty_bin_indices.empty()) {
+                fallback_to_repeat = true;
+            }
+        }
+
+        if (fallback_to_repeat) {
+            int source_bin_idx = 0;
+            for (size_t target_bin_idx = 0; target_bin_idx < target_group.size(); ++target_bin_idx) {
+                if (target_group[target_bin_idx].empty() && source_bin_idx < source_group.size()) {
+                    target_group[target_bin_idx] = source_group[source_bin_idx++];
                 }
             }
         }
