@@ -76,7 +76,7 @@ ext_modules = [
 
 setup(
     name="lightbinpack",
-    version="0.0.3",
+    version="0.0.4",
     author="TechxGenus",
     description="A lightweight library for solving bin packing problems",
     url="https://github.com/TechxGenus/LightBinPack",
