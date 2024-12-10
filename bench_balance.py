@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from lightbinpack import ogbfd, ogbfdp
+from lightbinpack import ogbfd, ogbfdp, ohgbfd
 
 def verify_packing(original_lengths, bin_results, max_length):
     """Verify if the packing result is valid."""
@@ -71,7 +71,10 @@ def run_balance_benchmark(algorithm, sizes, lengths, max_length, bins_per_group=
             data = lengths[:size]
             
             start = time.time()
-            if algorithm.__name__ == 'ogbfd' or algorithm.__name__ == 'ogbfdp':
+            if algorithm.__name__ == 'ohgbfd':
+                batch_max_lengths = [max_length] * bins_per_group
+                result = algorithm(data, batch_max_lengths, strategy=strategy)
+            elif algorithm.__name__ in ['ogbfd', 'ogbfdp']:
                 result = algorithm(data, max_length, bins_per_group, strategy=strategy)
             else:
                 result = algorithm(data, max_length)
@@ -105,7 +108,11 @@ def plot_balance_results(sizes, results_dict):
         'OGBFDP-2-S0': ('red', 's'),
         'OGBFDP-4-S0': ('green', 's'),
         'OGBFDP-8-S0': ('orange', 's'),
-        
+        'OHGBFD-1-S0': ('purple', 'p'),
+        'OHGBFD-2-S0': ('brown', 'p'),
+        'OHGBFD-4-S0': ('pink', 'p'),
+        'OHGBFD-8-S0': ('gray', 'p'),
+               
         'OGBFD-1-S1': ('blue', '^'),
         'OGBFD-2-S1': ('red', '^'),
         'OGBFD-4-S1': ('green', '^'),
@@ -114,6 +121,10 @@ def plot_balance_results(sizes, results_dict):
         'OGBFDP-2-S1': ('red', 'v'),
         'OGBFDP-4-S1': ('green', 'v'),
         'OGBFDP-8-S1': ('orange', 'v'),
+        'OHGBFD-1-S1': ('purple', 'h'),
+        'OHGBFD-2-S1': ('brown', 'h'),
+        'OHGBFD-4-S1': ('pink', 'h'),
+        'OHGBFD-8-S1': ('gray', 'h'),
     }
     
     for name, (times, _, _, _) in results_dict.items():
@@ -181,6 +192,10 @@ def main():
         'OGBFDP-2-S0': run_balance_benchmark(ogbfdp, sizes, lengths, batch_max_length, 2, strategy=0, num_runs=num_runs),
         'OGBFDP-4-S0': run_balance_benchmark(ogbfdp, sizes, lengths, batch_max_length, 4, strategy=0, num_runs=num_runs),
         'OGBFDP-8-S0': run_balance_benchmark(ogbfdp, sizes, lengths, batch_max_length, 8, strategy=0, num_runs=num_runs),
+        'OHGBFD-1-S0': run_balance_benchmark(ohgbfd, sizes, lengths, batch_max_length, 1, strategy=0, num_runs=num_runs),
+        'OHGBFD-2-S0': run_balance_benchmark(ohgbfd, sizes, lengths, batch_max_length, 2, strategy=0, num_runs=num_runs),
+        'OHGBFD-4-S0': run_balance_benchmark(ohgbfd, sizes, lengths, batch_max_length, 4, strategy=0, num_runs=num_runs),
+        'OHGBFD-8-S0': run_balance_benchmark(ohgbfd, sizes, lengths, batch_max_length, 8, strategy=0, num_runs=num_runs),
         
         'OGBFD-1-S1': run_balance_benchmark(ogbfd, sizes, lengths, batch_max_length, 1, strategy=1, num_runs=num_runs),
         'OGBFD-2-S1': run_balance_benchmark(ogbfd, sizes, lengths, batch_max_length, 2, strategy=1, num_runs=num_runs),
@@ -190,6 +205,10 @@ def main():
         'OGBFDP-2-S1': run_balance_benchmark(ogbfdp, sizes, lengths, batch_max_length, 2, strategy=1, num_runs=num_runs),
         'OGBFDP-4-S1': run_balance_benchmark(ogbfdp, sizes, lengths, batch_max_length, 4, strategy=1, num_runs=num_runs),
         'OGBFDP-8-S1': run_balance_benchmark(ogbfdp, sizes, lengths, batch_max_length, 8, strategy=1, num_runs=num_runs),
+        'OHGBFD-1-S1': run_balance_benchmark(ohgbfd, sizes, lengths, batch_max_length, 1, strategy=1, num_runs=num_runs),
+        'OHGBFD-2-S1': run_balance_benchmark(ohgbfd, sizes, lengths, batch_max_length, 2, strategy=1, num_runs=num_runs),
+        'OHGBFD-4-S1': run_balance_benchmark(ohgbfd, sizes, lengths, batch_max_length, 4, strategy=1, num_runs=num_runs),
+        'OHGBFD-8-S1': run_balance_benchmark(ohgbfd, sizes, lengths, batch_max_length, 8, strategy=1, num_runs=num_runs),
     }
     
     print("\nBalance Benchmark Results:")

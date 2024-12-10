@@ -9,6 +9,7 @@ LightBinPack is a lightweight library for solving bin packing problems, implemen
 - Optimized Best-Fit Decreasing Parallel (OBFDP) - Parallel version of OBFD for large integer lengths
 - Optimized Grouped Best-Fit Decreasing (OGBFD) - Group-based BFD for better load balancing
 - Optimized Grouped Best-Fit Decreasing Parallel (OGBFDP) - Parallel version of OGBFD for large datasets
+- Optimized Heterogeneous Grouped Best-Fit Decreasing (OHGBFD) - Group-based BFD with heterogeneous bin sizes
 
 ## Installation
 
@@ -25,7 +26,7 @@ pip install git+https://github.com/TechxGenus/LightBinPack.git
 ## Usage
 
 ```python
-from lightbinpack import nf, ffd, bfd, obfd, obfdp, ogbfd, ogbfdp
+from lightbinpack import nf, ffd, bfd, obfd, obfdp, ogbfd, ogbfdp, ohgbfd
 
 items = [2.5, 1.5, 3.0, 2.0, 1.0]
 bin_capacity = 4.0
@@ -35,12 +36,13 @@ result_ffd = ffd(items, bin_capacity)
 result_bfd = bfd(items, bin_capacity)
 
 items_int = [2, 1, 3, 2, 1]
-bin_capacity_int = 4
+batch_max_length = 4
 
-result_obfd = obfd(items_int, bin_capacity_int)
-result_obfdp = obfdp(items_int, bin_capacity_int)
-result_ogbfd = ogbfd(items_int, bin_capacity_int, bins_per_group=2)
-result_ogbfdp = ogbfdp(items_int, bin_capacity_int, bins_per_group=2)
+result_obfd = obfd(items_int, batch_max_length)
+result_obfdp = obfdp(items_int, batch_max_length)
+result_ogbfd = ogbfd(items_int, batch_max_length, bins_per_group=2)
+result_ogbfdp = ogbfdp(items_int, batch_max_length, bins_per_group=2)
+result_ohgbfd = ohgbfd(items_int, batch_max_lengths=[4, 5])
 
 print(result_nf)
 print(result_ffd)
@@ -49,6 +51,7 @@ print(result_obfd)
 print(result_obfdp)
 print(result_ogbfd)
 print(result_ogbfdp)
+print(result_ohgbfd)
 ```
 
 ## Algorithm Description
@@ -101,6 +104,13 @@ print(result_ogbfdp)
 - Maintains group-based bin allocation for load balancing
 - Suitable for large datasets requiring balanced bin utilization
 - Adaptive to available CPU cores and input size
+
+### Optimized Heterogeneous Grouped Best-Fit Decreasing (OHGBFD)
+- Group-based version of BFD supporting different bin sizes within groups
+- Uses segment tree for efficient group capacity tracking
+- Maintains multiple bins per group with heterogeneous capacities
+- Time complexity: O(N log L) where L is the maximum length
+- Suitable for scenarios requiring balanced bin utilization with varying bin sizes
 
 ## Algorithm Selection Guide
 
