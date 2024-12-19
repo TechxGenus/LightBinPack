@@ -65,7 +65,7 @@ PYBIND11_MODULE(radix_sort, m) {
     m.def("radix_sort", &radix_sort,
           "Radix sort algorithm for sorting integer lists",
           py::arg("input_data"),
-          py::arg("start_index"),
-          py::arg("max_index"),
-          py::arg("max_value"));
+          py::arg("start_index") = 0,
+          py::arg("max_index") = 32,
+          py::arg("max_value") = 16384);
 }
