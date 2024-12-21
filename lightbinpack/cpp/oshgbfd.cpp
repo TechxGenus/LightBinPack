@@ -1,4 +1,4 @@
-#include <pybind11/pybind11.h>
+#include <pybind11/pybind11.h> 
 #include <pybind11/stl.h>
 #include <vector>
 #include <algorithm>
@@ -17,13 +17,6 @@ public:
         n = 1;
         while (n < max_length + 1) n <<= 1;
         tree.assign(2 * n, 0);
-        tree[n - 1 + max_length] = max_length;
-        for (int i = max_length - 1; i >= 0; --i) {
-            tree[n - 1 + i] = 0;
-        }
-        for (int i = n - 2; i >= 0; --i) {
-            tree[i] = std::max(tree[2 * i + 1], tree[2 * i + 2]);
-        }
     }
 
     void update(int idx, int val) {
@@ -113,21 +106,26 @@ public:
     }
 };
 
-std::vector<std::vector<std::vector<int>>> ohgbfd(
+std::vector<std::pair<int, std::vector<std::vector<int>>>> oshgbfd(
     const std::vector<int>& lengths,
-    const std::vector<int>& batch_max_lengths,
+    const std::vector<std::vector<int>>& batch_max_lengths_list,
     int item_max_length = -1
 ) {
-    if (lengths.empty() || batch_max_lengths.empty()) {
+    if (lengths.empty() || batch_max_lengths_list.empty()) {
         return {};
     }
 
     int max_batch_length = 0;
-    for (int length : batch_max_lengths) {
-        if (length <= 0) {
-            throw std::runtime_error("Bin length must be positive");
+    for (const auto& batch_max_lengths : batch_max_lengths_list) {
+        if (batch_max_lengths.empty()) {
+            throw std::runtime_error("Each bin combination must not be empty");
         }
-        max_batch_length = std::max(max_batch_length, length);
+        for (int length : batch_max_lengths) {
+            if (length <= 0) {
+                throw std::runtime_error("Bin length must be positive");
+            }
+            max_batch_length = std::max(max_batch_length, length);
+        }
     }
 
     if (item_max_length <= 0) {
@@ -156,15 +154,15 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(
     IterativeSegmentTree seg_tree(max_batch_length);
 
     std::vector<std::vector<size_t>> capacity_to_groups(max_batch_length + 1);
-    std::vector<HeterogeneousBinGroup> groups;
-    groups.reserve(lengths.size() / (2 * batch_max_lengths.size()) + 1);
+    std::vector<std::pair<int, HeterogeneousBinGroup>> groups;
+    groups.reserve(lengths.size() / (2 * batch_max_lengths_list[0].size()) + 1);
 
-    groups.emplace_back(batch_max_lengths);
-    capacity_to_groups[groups.back().get_max_remaining()].push_back(0);
-    seg_tree.update(groups.back().get_max_remaining(), groups.back().get_max_remaining());
+    groups.emplace_back(0, HeterogeneousBinGroup(batch_max_lengths_list[0]));
+    capacity_to_groups[groups.back().second.get_max_remaining()].push_back(0);
+    seg_tree.update(groups.back().second.get_max_remaining(), groups.back().second.get_max_remaining());
 
-    std::vector<std::vector<std::vector<int>>> result;
-    result.reserve(lengths.size() / (2 * batch_max_lengths.size()) + 1);
+    std::vector<std::pair<int, std::vector<std::vector<int>>>> result;
+    result.reserve(lengths.size() / (2 * batch_max_lengths_list[0].size()) + 1);
 
     for (int size = item_max_length; size >= 1; --size) {
         for (int orig_idx : count[size]) {
@@ -177,28 +175,39 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(
                     seg_tree.update(best_capacity, 0);
                 }
 
-                groups[group_idx].add_item(orig_idx, size);
-                int new_capacity = groups[group_idx].get_max_remaining();
+                groups[group_idx].second.add_item(orig_idx, size);
+                int new_capacity = groups[group_idx].second.get_max_remaining();
 
                 capacity_to_groups[new_capacity].push_back(group_idx);
                 if (new_capacity > 0) {
                     seg_tree.update(new_capacity, new_capacity);
                 }
             } else {
-                size_t new_group_idx = groups.size();
-                groups.emplace_back(batch_max_lengths);
-                groups.back().add_item(orig_idx, size);
+                bool found_suitable_group = false;
+                for (size_t bin_type = 0; bin_type < batch_max_lengths_list.size(); ++bin_type) {
+                    HeterogeneousBinGroup new_group(batch_max_lengths_list[bin_type]);
+                    if (new_group.can_fit(size)) {
+                        size_t new_group_idx = groups.size();
+                        groups.emplace_back(bin_type, std::move(new_group));
+                        groups.back().second.add_item(orig_idx, size);
 
-                int new_capacity = groups.back().get_max_remaining();
-                capacity_to_groups[new_capacity].push_back(new_group_idx);
-                seg_tree.update(new_capacity, new_capacity);
+                        int new_capacity = groups.back().second.get_max_remaining();
+                        capacity_to_groups[new_capacity].push_back(new_group_idx);
+                        seg_tree.update(new_capacity, new_capacity);
+                        found_suitable_group = true;
+                        break;
+                    }
+                }
+                if (!found_suitable_group) {
+                    throw std::runtime_error("No suitable bin combination found for item");
+                }
             }
         }
     }
 
     result.reserve(groups.size());
-    for (const auto& group : groups) {
-        result.push_back(group.get_bins());
+    for (const auto& [bin_type, group] : groups) {
+        result.emplace_back(bin_type, group.get_bins());
     }
 
     if (result.size() >= 2) {
@@ -206,8 +215,8 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(
         const auto& source_group = result.front();
 
         std::vector<size_t> empty_bin_indices;
-        for (size_t bin_idx = 0; bin_idx < target_group.size(); ++bin_idx) {
-            if (target_group[bin_idx].empty()) {
+        for (size_t bin_idx = 0; bin_idx < target_group.second.size(); ++bin_idx) {
+            if (target_group.second[bin_idx].empty()) {
                 empty_bin_indices.push_back(bin_idx);
             }
         }
@@ -219,18 +228,18 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(
                  group_idx >= 0 && !empty_bin_indices.empty() && !early_termination; 
                  --group_idx) {
                 
-                for (int bin_idx = result[group_idx].size() - 1; 
+                for (int bin_idx = result[group_idx].second.size() - 1; 
                      bin_idx >= 0 && !empty_bin_indices.empty() && !early_termination; 
                      --bin_idx) {
                     
-                    auto& donor_bin = result[group_idx][bin_idx];
+                    auto& donor_bin = result[group_idx].second[bin_idx];
                     if (donor_bin.size() >= 2) {
                         int item = donor_bin.back();
                         donor_bin.pop_back();
                         
                         size_t target_bin_idx = empty_bin_indices.back();
                         empty_bin_indices.pop_back();
-                        target_group[target_bin_idx].push_back(item);
+                        target_group.second[target_bin_idx].push_back(item);
                     } else if (donor_bin.size() <= 1) {
                         early_termination = true;
                     }
@@ -244,9 +253,9 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(
 
         if (fallback_to_repeat) {
             int source_bin_idx = 0;
-            for (size_t target_bin_idx = 0; target_bin_idx < target_group.size(); ++target_bin_idx) {
-                if (target_group[target_bin_idx].empty() && source_bin_idx < source_group.size()) {
-                    target_group[target_bin_idx] = source_group[source_bin_idx++];
+            for (size_t target_bin_idx = 0; target_bin_idx < target_group.second.size(); ++target_bin_idx) {
+                if (target_group.second[target_bin_idx].empty() && source_bin_idx < source_group.second.size()) {
+                    target_group.second[target_bin_idx] = source_group.second[source_bin_idx++];
                 }
             }
         }
@@ -255,10 +264,10 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(
     return result;
 }
 
-PYBIND11_MODULE(ohgbfd, m) {
+PYBIND11_MODULE(oshgbfd, m) {
     m.doc() = "Optimized Heterogeneous Grouped BFD (Best Fit Decreasing) algorithm implementation";
-    m.def("ohgbfd", &ohgbfd, "Optimized Heterogeneous Grouped BFD algorithm",
+    m.def("oshgbfd", &oshgbfd, "Optimized Heterogeneous Grouped BFD algorithm",
           py::arg("lengths"),
-          py::arg("batch_max_lengths"),
+          py::arg("batch_max_lengths_list"),
           py::arg("item_max_length") = -1);
 }
