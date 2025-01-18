@@ -104,6 +104,14 @@ ext_modules = [
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
+    Extension(
+        "lightbinpack.cpp.load_balance",
+        ["lightbinpack/cpp/load_balance.cpp"],
+        include_dirs=[pybind11.get_include()],
+        language='c++',
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+    ),
 ]
 
 setup(
