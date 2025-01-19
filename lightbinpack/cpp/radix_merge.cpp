@@ -57,7 +57,7 @@ struct TrieNode
 class IncrementalFlatten
 {
   public:
-    IncrementalFlatten()
+    IncrementalFlatten() : total_weight(0)
     {
         root = std::make_unique<TrieNode>();
     }
@@ -65,14 +65,24 @@ class IncrementalFlatten
     void insert_list(const std::vector<int> &list, size_t list_idx)
     {
         TrieNode *current = root.get();
+        int match_length = 0;
+        bool first_mismatch = true;
+        
         for (const int &elem : list)
         {
             if (current->children.find(elem) == current->children.end())
             {
+                if (first_mismatch) {
+                    first_mismatch = false;
+                    total_weight += list.size() * list.size() - match_length * match_length;
+                }
                 current->children[elem] = std::make_unique<TrieNode>(elem);
             }
             current = current->children[elem].get();
             current->index_mask |= (1ULL << list_idx);
+            if (first_mismatch) {
+                match_length++;
+            }
         }
     }
 
@@ -93,10 +103,15 @@ class IncrementalFlatten
         return indices;
     }
 
+    int get_total_weight() const {
+        return total_weight;
+    }
+
   private:
     std::unique_ptr<TrieNode> root;
     std::vector<int> flattened;
     std::vector<uint64_t> indices;
+    int total_weight;
 
     void dfs(TrieNode *node)
     {
@@ -109,19 +124,22 @@ class IncrementalFlatten
     }
 };
 
-std::tuple<std::vector<std::vector<std::vector<int>>>, std::vector<int>, std::vector<std::vector<int>>,
-           std::vector<std::vector<uint64_t>>>
+std::tuple<std::vector<std::vector<std::vector<int>>>, std::vector<int>, 
+           std::vector<int>,
+           std::vector<std::vector<int>>, std::vector<std::vector<uint64_t>>>
 radix_merge(const std::vector<std::vector<std::vector<int>>> &input_data, int min_prefix_match, int max_length,
             int max_count, bool allow_cross_group_merge)
 {
     if (input_data.empty())
     {
         return std::make_tuple(std::vector<std::vector<std::vector<int>>>(), std::vector<int>(),
-                               std::vector<std::vector<int>>(), std::vector<std::vector<uint64_t>>());
+                             std::vector<int>(),
+                             std::vector<std::vector<int>>(), std::vector<std::vector<uint64_t>>());
     }
 
     std::vector<std::vector<std::vector<int>>> result;
     std::vector<int> total_lengths;
+    std::vector<int> total_weights;
     std::vector<std::vector<int>> flattened_lists;
     std::vector<std::vector<uint64_t>> index_lists;
 
@@ -207,6 +225,7 @@ radix_merge(const std::vector<std::vector<std::vector<int>>> &input_data, int mi
             }
             result.emplace_back(std::move(current_group));
             total_lengths.push_back(current_total_length);
+            total_weights.push_back(flattener.get_total_weight());
             flattened_lists.emplace_back(std::move(current_flattened));
             index_lists.emplace_back(std::move(current_indices));
 
@@ -228,6 +247,7 @@ radix_merge(const std::vector<std::vector<std::vector<int>>> &input_data, int mi
         {
             result.emplace_back(std::move(current_group));
             total_lengths.push_back(current_total_length);
+            total_weights.push_back(flattener.get_total_weight());
             flattened_lists.emplace_back(std::move(current_flattened));
             index_lists.emplace_back(std::move(current_indices));
         }
@@ -248,6 +268,7 @@ radix_merge(const std::vector<std::vector<std::vector<int>>> &input_data, int mi
                 total_lengths.push_back(static_cast<int>(single_list.size()));
                 flattened_lists.emplace_back(single_list);
                 index_lists.emplace_back(std::vector<uint64_t>{1ULL});
+                total_weights.push_back(single_list.size() * single_list.size());
             }
             else
             {
@@ -263,14 +284,16 @@ radix_merge(const std::vector<std::vector<std::vector<int>>> &input_data, int mi
 
                 result.emplace_back(group);
                 total_lengths.push_back(merged_total_length);
+                total_weights.push_back(flattener.get_total_weight());
                 flattened_lists.emplace_back(std::move(merged_flattened));
                 index_lists.emplace_back(std::move(merged_indices));
             }
         }
     }
 
-    return std::make_tuple(std::move(result), std::move(total_lengths), std::move(flattened_lists),
-                           std::move(index_lists));
+    return std::make_tuple(std::move(result), std::move(total_lengths), 
+                          std::move(total_weights),
+                          std::move(flattened_lists), std::move(index_lists));
 }
 
 PYBIND11_MODULE(radix_merge, m)
@@ -279,7 +302,7 @@ PYBIND11_MODULE(radix_merge, m)
               "optimization and bitmask indices";
     m.def("radix_merge", &radix_merge,
           "Merge lists based on prefix matching and length/count constraints, "
-          "considering shared prefixes and returning bitmask indices",
+          "considering shared prefixes and returning bitmask indices and weights",
           py::arg("input_data"), py::arg("min_prefix_match") = 0, py::arg("max_length") = 16384,
           py::arg("max_count") = 32, py::arg("allow_cross_group_merge") = true);
 }

@@ -105,7 +105,7 @@ class HeterogeneousBinGroup
         return max_val;
     }
 
-    void add_item(int item_idx, int size)
+    void add_item(int item_idx, int size, long long weight)
     {
         int chosen_bin = -1;
         double min_ratio = std::numeric_limits<double>::infinity();
@@ -130,7 +130,7 @@ class HeterogeneousBinGroup
 
         bins[chosen_bin].push_back(item_idx);
         remaining_space[chosen_bin] -= size;
-        sum_of_squares[chosen_bin] += (long long)size * (long long)size;
+        sum_of_squares[chosen_bin] += weight;
     }
 
     const std::vector<std::vector<int>> &get_bins() const
@@ -140,11 +140,19 @@ class HeterogeneousBinGroup
 };
 
 std::vector<std::vector<std::vector<int>>> ohgbfd(const std::vector<int> &lengths,
-                                                  const std::vector<int> &batch_max_lengths, int item_max_length = -1)
+                                                  const std::vector<int> &batch_max_lengths,
+                                                  int item_max_length = -1,
+                                                  const std::vector<long long> &weights = std::vector<long long>())
 {
     if (lengths.empty() || batch_max_lengths.empty())
     {
         return {};
+    }
+
+    // Validate weights if provided
+    if (!weights.empty() && weights.size() != lengths.size())
+    {
+        throw std::runtime_error("Weights vector must have the same size as lengths vector");
     }
 
     int max_batch_length = 0;
@@ -166,7 +174,7 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(const std::vector<int> &length
         }
     }
 
-    std::vector<std::vector<int>> count(item_max_length + 1);
+    std::vector<std::vector<std::pair<int, long long>>> count(item_max_length + 1);
     count.reserve(item_max_length + 1);
     for (size_t i = 0; i < lengths.size(); ++i)
     {
@@ -183,7 +191,8 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(const std::vector<int> &length
         {
             throw std::runtime_error("Item size must be positive");
         }
-        count[len].push_back(i);
+        long long weight = weights.empty() ? (long long)len * len : weights[i];
+        count[len].emplace_back(i, weight);
     }
 
     IterativeSegmentTree seg_tree(max_batch_length);
@@ -201,7 +210,7 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(const std::vector<int> &length
 
     for (int size = item_max_length; size >= 1; --size)
     {
-        for (int orig_idx : count[size])
+        for (const auto &[orig_idx, weight] : count[size])
         {
             int best_capacity = seg_tree.find_best_fit(size);
 
@@ -214,7 +223,7 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(const std::vector<int> &length
                     seg_tree.update(best_capacity, 0);
                 }
 
-                groups[group_idx].add_item(orig_idx, size);
+                groups[group_idx].add_item(orig_idx, size, weight);
                 int new_capacity = groups[group_idx].get_max_remaining();
 
                 capacity_to_groups[new_capacity].push_back(group_idx);
@@ -227,7 +236,7 @@ std::vector<std::vector<std::vector<int>>> ohgbfd(const std::vector<int> &length
             {
                 size_t new_group_idx = groups.size();
                 groups.emplace_back(batch_max_lengths);
-                groups.back().add_item(orig_idx, size);
+                groups.back().add_item(orig_idx, size, weight);
 
                 int new_capacity = groups.back().get_max_remaining();
                 capacity_to_groups[new_capacity].push_back(new_group_idx);
@@ -309,6 +318,9 @@ PYBIND11_MODULE(ohgbfd, m)
 {
     m.doc() = "Optimized Heterogeneous Grouped BFD (Best Fit Decreasing) algorithm "
               "implementation";
-    m.def("ohgbfd", &ohgbfd, "Optimized Heterogeneous Grouped BFD algorithm", py::arg("lengths"),
-          py::arg("batch_max_lengths"), py::arg("item_max_length") = -1);
+    m.def("ohgbfd", &ohgbfd, "Optimized Heterogeneous Grouped BFD algorithm", 
+          py::arg("lengths"),
+          py::arg("batch_max_lengths"), 
+          py::arg("item_max_length") = -1,
+          py::arg("weights") = std::vector<long long>());
 }
