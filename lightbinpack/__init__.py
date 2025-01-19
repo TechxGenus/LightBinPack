@@ -10,6 +10,7 @@ from lightbinpack.cpp.oshgbfd import oshgbfd
 from lightbinpack.cpp.radix_sort import radix_sort
 from lightbinpack.cpp.radix_merge import radix_merge
 from lightbinpack.cpp.load_balance import load_balance
+from lightbinpack.packing import pack, PackingStrategy
 
 __version__ = "0.0.4"
 __all__ = [
@@ -25,4 +26,6 @@ __all__ = [
     "radix_sort",
     "radix_merge",
     "load_balance",
+    "pack",
+    "PackingStrategy",
 ]
