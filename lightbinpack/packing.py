@@ -1,7 +1,7 @@
 from enum import Enum
 import warnings
 from typing import List, Union, Optional, Tuple
-from .cpp import nf, ffd, bfd, obfd, obfdp, ogbfd, ogbfdp, ohgbfd, oshgbfd
+from lightbinpack import nf, ffd, bfd, obfd, obfdp, ogbfd, ogbfdp, ohgbfd, oshgbfd
 
 
 class PackingStrategy(Enum):
@@ -30,10 +30,11 @@ def pack(
     batch_max_length: Union[float, int, List[int], List[List[int]]],
     strategy: Optional[Union[str, PackingStrategy]] = None,
     variant: Optional[Union[str, PackingVariant]] = None,
-    bins_per_group: int = 1,
+    dp_size: int = 1,
     item_max_length: int = -1,
     enable_parallel: bool = False,
-    **kwargs,
+    parallel_strategy: int = 0,
+    weights: Optional[List[int]] = [],
 ) -> Union[List[List[int]], List[List[List[int]]], List[Tuple[int, List[List[int]]]]]:
     """
     Unified packing function API
@@ -46,10 +47,11 @@ def pack(
             - For OSHGBFD: list of integer lists
         strategy: Packing strategy, can be PackingStrategy enum value or corresponding string
         variant: Packing variant, can be PackingVariant enum value or corresponding string ("linear"/"square")
-        bins_per_group: Number of bins per group
+        dp_size: Number of bins per group
         item_max_length: Maximum length of items. If -1, calculated automatically
         enable_parallel: Whether to enable parallel processing (for parallel algorithms)
-        **kwargs: Additional optional parameters
+        parallel_strategy: Strategy for parallel algorithms (0 or 1)
+        weights: Optional weights for heterogeneous algorithms (OHGBFD/OSHGBFD)
 
     Returns:
         Different formats of packing results based on strategy:
@@ -69,14 +71,22 @@ def pack(
                 raise ValueError(f"Invalid variant: {variant}")
 
     if strategy is None:
-        if variant is None:
-            strategy = PackingStrategy.OGBFD
+        if isinstance(batch_max_length, (list, tuple)):
+            if all(isinstance(x, (list, tuple)) for x in batch_max_length):
+                strategy = PackingStrategy.OSHGBFD
+            elif all(isinstance(x, (int, float)) for x in batch_max_length):
+                strategy = PackingStrategy.OHGBFD
+            else:
+                raise ValueError("Invalid batch_max_length format")
         else:
-            strategy = (
-                PackingStrategy.OGBFD
-                if variant == PackingVariant.SQUARE
-                else PackingStrategy.OBFD
-            )
+            if variant is None:
+                strategy = PackingStrategy.OGBFD
+            else:
+                strategy = (
+                    PackingStrategy.OGBFD
+                    if variant == PackingVariant.SQUARE
+                    else PackingStrategy.OBFD
+                )
     else:
         if variant is not None:
             warnings.warn(
@@ -120,35 +130,35 @@ def pack(
 
     try:
         if strategy == PackingStrategy.NF:
-            return nf(lengths, batch_max_length, **kwargs)
+            return nf(lengths, batch_max_length)
 
         elif strategy == PackingStrategy.FFD:
-            return ffd(lengths, batch_max_length, **kwargs)
+            return ffd(lengths, batch_max_length)
 
         elif strategy == PackingStrategy.BFD:
-            return bfd(lengths, batch_max_length, **kwargs)
+            return bfd(lengths, batch_max_length)
 
         elif strategy == PackingStrategy.OBFD:
-            return obfd(lengths, batch_max_length, item_max_length, **kwargs)
+            return obfd(lengths, batch_max_length, item_max_length)
 
         elif strategy == PackingStrategy.OBFDP:
-            return obfdp(lengths, batch_max_length, item_max_length, **kwargs)
+            return obfdp(lengths, batch_max_length, item_max_length, parallel_strategy)
 
         elif strategy == PackingStrategy.OGBFD:
             return ogbfd(
-                lengths, batch_max_length, bins_per_group, item_max_length, **kwargs
+                lengths, batch_max_length, dp_size, item_max_length
             )
 
         elif strategy == PackingStrategy.OGBFDP:
             return ogbfdp(
-                lengths, batch_max_length, bins_per_group, item_max_length, **kwargs
+                lengths, batch_max_length, dp_size, item_max_length, parallel_strategy
             )
 
         elif strategy == PackingStrategy.OHGBFD:
-            return ohgbfd(lengths, batch_max_length, item_max_length, **kwargs)
+            return ohgbfd(lengths, batch_max_length, item_max_length, weights)
 
         elif strategy == PackingStrategy.OSHGBFD:
-            return oshgbfd(lengths, batch_max_length, item_max_length, **kwargs)
+            return oshgbfd(lengths, batch_max_length, item_max_length, weights)
 
     except Exception as e:
         raise RuntimeError(f"Packing failed with strategy {strategy}: {str(e)}")
