@@ -1,48 +1,60 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <vector>
+
 #include <algorithm>
 #include <queue>
 #include <stdexcept>
+#include <vector>
 
 namespace py = pybind11;
 
-class IterativeSegmentTree {
-private:
+class IterativeSegmentTree
+{
+  private:
     int n;
     std::vector<int> tree;
 
-public:
-    IterativeSegmentTree(int max_length) {
+  public:
+    IterativeSegmentTree(int max_length)
+    {
         n = 1;
-        while (n < max_length + 1) n <<= 1;
+        while (n < max_length + 1)
+            n <<= 1;
         tree.assign(2 * n, 0);
         tree[n - 1 + max_length] = max_length;
-        for (int i = max_length - 1; i >= 0; --i) {
+        for (int i = max_length - 1; i >= 0; --i)
+        {
             tree[n - 1 + i] = 0;
         }
-        for (int i = n - 2; i >= 0; --i) {
+        for (int i = n - 2; i >= 0; --i)
+        {
             tree[i] = std::max(tree[2 * i + 1], tree[2 * i + 2]);
         }
     }
 
-    void update(int idx, int val) {
+    void update(int idx, int val)
+    {
         idx += n - 1;
         tree[idx] = val;
-        while (idx > 0) {
+        while (idx > 0)
+        {
             idx = (idx - 1) / 2;
             int left = tree[2 * idx + 1];
             int right = tree[2 * idx + 2];
             int new_val = std::max(left, right);
-            if (tree[idx] == new_val) break;
+            if (tree[idx] == new_val)
+                break;
             tree[idx] = new_val;
         }
     }
 
-    int find_best_fit(int target) const {
+    int find_best_fit(int target) const
+    {
         int idx = 0;
-        if (tree[idx] < target) return -1;
-        while (idx < (n - 1)) {
+        if (tree[idx] < target)
+            return -1;
+        while (idx < (n - 1))
+        {
             if (tree[2 * idx + 1] >= target)
                 idx = 2 * idx + 1;
             else
@@ -53,34 +65,42 @@ public:
     }
 };
 
-class BinGroup {
-private:
+class BinGroup
+{
+  private:
     int num_bins;
     int batch_max_length;
     std::vector<std::vector<int>> bins;
     std::vector<int> remaining_space;
-    std::priority_queue<std::pair<int,int>> max_heap;
+    std::priority_queue<std::pair<int, int>> max_heap;
 
-public:
-    BinGroup(int m, int l) : num_bins(m), batch_max_length(l) {
+  public:
+    BinGroup(int m, int l) : num_bins(m), batch_max_length(l)
+    {
         bins.resize(m);
         remaining_space.assign(m, l);
-        for (int i = 0; i < m; ++i) {
+        for (int i = 0; i < m; ++i)
+        {
             max_heap.push({remaining_space[i], i});
         }
     }
 
-    bool can_fit(int size) const {
-        if (max_heap.empty()) return false;
+    bool can_fit(int size) const
+    {
+        if (max_heap.empty())
+            return false;
         return max_heap.top().first >= size;
     }
 
-    int get_max_remaining() const {
+    int get_max_remaining() const
+    {
         return max_heap.empty() ? 0 : max_heap.top().first;
     }
 
-    void add_item(int item_idx, int size) {
-        if (max_heap.empty()) {
+    void add_item(int item_idx, int size)
+    {
+        if (max_heap.empty())
+        {
             throw std::runtime_error("No bins available in the group");
         }
 
@@ -89,50 +109,55 @@ public:
 
         bins[bin_idx].push_back(item_idx);
         remaining_space[bin_idx] -= size;
-        
+
         max_heap.push({remaining_space[bin_idx], bin_idx});
     }
 
-    const std::vector<std::vector<int>>& get_bins() const {
+    const std::vector<std::vector<int>> &get_bins() const
+    {
         return bins;
     }
 };
 
-std::vector<std::vector<std::vector<int>>> ogbfd(
-    const std::vector<int>& lengths,
-    int batch_max_length,
-    int bins_per_group,
-    int item_max_length = -1,
-    int strategy = 0
-) {
-    if (lengths.empty() || batch_max_length <= 0 || bins_per_group <= 0) {
+std::vector<std::vector<std::vector<int>>> ogbfd(const std::vector<int> &lengths, int batch_max_length,
+                                                 int bins_per_group, int item_max_length = -1, int strategy = 0)
+{
+    if (lengths.empty() || batch_max_length <= 0 || bins_per_group <= 0)
+    {
         return {};
     }
 
-    if (item_max_length <= 0) {
+    if (item_max_length <= 0)
+    {
         item_max_length = 0;
-        for (int length : lengths) {
+        for (int length : lengths)
+        {
             item_max_length = std::max(item_max_length, length);
         }
     }
 
     std::vector<std::vector<int>> count(item_max_length + 1);
     count.reserve(item_max_length + 1);
-    for (size_t i = 0; i < lengths.size(); ++i) {
+    for (size_t i = 0; i < lengths.size(); ++i)
+    {
         int len = lengths[i];
-        if (len > batch_max_length) {
+        if (len > batch_max_length)
+        {
             throw std::runtime_error("Item size exceeds batch max length");
         }
-        if (len > item_max_length) {
+        if (len > item_max_length)
+        {
             throw std::runtime_error("Item size exceeds item max length");
         }
-        if (len <= 0) {
+        if (len <= 0)
+        {
             throw std::runtime_error("Item size must be positive");
         }
         count[len].push_back(i);
     }
 
-    if (strategy == 0) {
+    if (strategy == 0)
+    {
         IterativeSegmentTree seg_tree(batch_max_length);
 
         std::vector<std::vector<size_t>> capacity_to_groups(batch_max_length + 1);
@@ -146,14 +171,18 @@ std::vector<std::vector<std::vector<int>>> ogbfd(
         std::vector<std::vector<std::vector<int>>> result;
         result.reserve(lengths.size() / (2 * bins_per_group) + 1);
 
-        for (int size = item_max_length; size >= 1; --size) {
-            for (int orig_idx : count[size]) {
+        for (int size = item_max_length; size >= 1; --size)
+        {
+            for (int orig_idx : count[size])
+            {
                 int best_capacity = seg_tree.find_best_fit(size);
 
-                if (best_capacity != -1) {
+                if (best_capacity != -1)
+                {
                     size_t group_idx = capacity_to_groups[best_capacity].back();
                     capacity_to_groups[best_capacity].pop_back();
-                    if (capacity_to_groups[best_capacity].empty()) {
+                    if (capacity_to_groups[best_capacity].empty())
+                    {
                         seg_tree.update(best_capacity, 0);
                     }
 
@@ -161,10 +190,13 @@ std::vector<std::vector<std::vector<int>>> ogbfd(
                     int new_capacity = groups[group_idx].get_max_remaining();
 
                     capacity_to_groups[new_capacity].push_back(group_idx);
-                    if (new_capacity > 0) {
+                    if (new_capacity > 0)
+                    {
                         seg_tree.update(new_capacity, new_capacity);
                     }
-                } else {
+                }
+                else
+                {
                     size_t new_group_idx = groups.size();
                     groups.emplace_back(bins_per_group, batch_max_length);
                     groups.back().add_item(orig_idx, size);
@@ -177,55 +209,65 @@ std::vector<std::vector<std::vector<int>>> ogbfd(
         }
 
         result.reserve(groups.size());
-        for (const auto& group : groups) {
+        for (const auto &group : groups)
+        {
             result.push_back(group.get_bins());
         }
 
-        if (result.size() >= 2) {
-            auto& target_group = result.back();
-            const auto& source_group = result.front();
+        if (result.size() >= 2)
+        {
+            auto &target_group = result.back();
+            const auto &source_group = result.front();
 
             std::vector<size_t> empty_bin_indices;
-            for (size_t bin_idx = 0; bin_idx < target_group.size(); ++bin_idx) {
-                if (target_group[bin_idx].empty()) {
+            for (size_t bin_idx = 0; bin_idx < target_group.size(); ++bin_idx)
+            {
+                if (target_group[bin_idx].empty())
+                {
                     empty_bin_indices.push_back(bin_idx);
                 }
             }
 
             bool fallback_to_repeat = false;
-            if (!empty_bin_indices.empty()) {
+            if (!empty_bin_indices.empty())
+            {
                 bool early_termination = false;
-                for (int group_idx = result.size() - 2; 
-                     group_idx >= 0 && !empty_bin_indices.empty() && !early_termination; 
-                     --group_idx) {
-                    
-                    for (int bin_idx = result[group_idx].size() - 1; 
-                         bin_idx >= 0 && !empty_bin_indices.empty() && !early_termination; 
-                         --bin_idx) {
-                        
-                        auto& donor_bin = result[group_idx][bin_idx];
-                        if (donor_bin.size() >= 2) {
+                for (int group_idx = result.size() - 2;
+                     group_idx >= 0 && !empty_bin_indices.empty() && !early_termination; --group_idx)
+                {
+                    for (int bin_idx = result[group_idx].size() - 1;
+                         bin_idx >= 0 && !empty_bin_indices.empty() && !early_termination; --bin_idx)
+                    {
+                        auto &donor_bin = result[group_idx][bin_idx];
+                        if (donor_bin.size() >= 2)
+                        {
                             int item = donor_bin.back();
                             donor_bin.pop_back();
-                            
+
                             size_t target_bin_idx = empty_bin_indices.back();
                             empty_bin_indices.pop_back();
                             target_group[target_bin_idx].push_back(item);
-                        } else if (donor_bin.size() <= 1) {
+                        }
+                        else if (donor_bin.size() <= 1)
+                        {
                             early_termination = true;
                         }
                     }
                 }
 
-                if (!empty_bin_indices.empty()) {
+                if (!empty_bin_indices.empty())
+                {
                     fallback_to_repeat = true;
                 }
             }
 
-            if (fallback_to_repeat) {
+            if (fallback_to_repeat)
+            {
                 int source_bin_idx = 0;
-                for (size_t target_bin_idx = 0; target_bin_idx < target_group.size(); ++target_bin_idx) {
-                    if (target_group[target_bin_idx].empty() && source_bin_idx < source_group.size()) {
+                for (size_t target_bin_idx = 0; target_bin_idx < target_group.size(); ++target_bin_idx)
+                {
+                    if (target_group[target_bin_idx].empty() && source_bin_idx < source_group.size())
+                    {
                         target_group[target_bin_idx] = source_group[source_bin_idx++];
                     }
                 }
@@ -233,12 +275,14 @@ std::vector<std::vector<std::vector<int>>> ogbfd(
         }
 
         return result;
-    } else {
+    }
+    else
+    {
         IterativeSegmentTree seg_tree(batch_max_length);
-        
+
         std::vector<std::vector<size_t>> capacity_to_bins(batch_max_length + 1);
         std::vector<size_t> bins_remaining;
-        bins_remaining.reserve(lengths.size() / 2);        
+        bins_remaining.reserve(lengths.size() / 2);
 
         bins_remaining.push_back(batch_max_length);
         capacity_to_bins[batch_max_length].push_back(0);
@@ -248,14 +292,18 @@ std::vector<std::vector<std::vector<int>>> ogbfd(
         bins_items.emplace_back();
         bins_items[0].reserve(lengths.size() / 2);
 
-        for (int size = item_max_length; size >= 1; --size) {
-            for (int orig_idx : count[size]) {
+        for (int size = item_max_length; size >= 1; --size)
+        {
+            for (int orig_idx : count[size])
+            {
                 int best_capacity = seg_tree.find_best_fit(size);
 
-                if (best_capacity != -1) {
+                if (best_capacity != -1)
+                {
                     size_t bin_idx = capacity_to_bins[best_capacity].back();
                     capacity_to_bins[best_capacity].pop_back();
-                    if (capacity_to_bins[best_capacity].empty()) {
+                    if (capacity_to_bins[best_capacity].empty())
+                    {
                         seg_tree.update(best_capacity, 0);
                     }
 
@@ -265,10 +313,13 @@ std::vector<std::vector<std::vector<int>>> ogbfd(
                     bins_items[bin_idx].push_back(orig_idx);
 
                     capacity_to_bins[new_capacity].push_back(bin_idx);
-                    if (new_capacity > 0) {
+                    if (new_capacity > 0)
+                    {
                         seg_tree.update(new_capacity, new_capacity);
                     }
-                } else {
+                }
+                else
+                {
                     size_t new_bin_idx = bins_remaining.size();
                     bins_remaining.push_back(batch_max_length - size);
                     bins_items.emplace_back();
@@ -282,63 +333,77 @@ std::vector<std::vector<std::vector<int>>> ogbfd(
         }
 
         std::vector<std::vector<std::vector<int>>> result;
-        for (size_t i = 0; i < bins_items.size(); i += bins_per_group) {
+        for (size_t i = 0; i < bins_items.size(); i += bins_per_group)
+        {
             std::vector<std::vector<int>> group;
-            for (size_t j = 0; j < bins_per_group; j++) {
-                if (i + j < bins_items.size()) {
+            for (size_t j = 0; j < bins_per_group; j++)
+            {
+                if (i + j < bins_items.size())
+                {
                     group.push_back(bins_items[i + j]);
-                } else {
+                }
+                else
+                {
                     group.emplace_back();
                 }
             }
             result.push_back(group);
         }
 
-        if (result.size() >= 2) {
-            auto& target_group = result.back();
-            const auto& source_group = result.front();
+        if (result.size() >= 2)
+        {
+            auto &target_group = result.back();
+            const auto &source_group = result.front();
 
             std::vector<size_t> empty_bin_indices;
-            for (size_t bin_idx = 0; bin_idx < target_group.size(); ++bin_idx) {
-                if (target_group[bin_idx].empty()) {
+            for (size_t bin_idx = 0; bin_idx < target_group.size(); ++bin_idx)
+            {
+                if (target_group[bin_idx].empty())
+                {
                     empty_bin_indices.push_back(bin_idx);
                 }
             }
 
             bool fallback_to_repeat = false;
-            if (!empty_bin_indices.empty()) {
+            if (!empty_bin_indices.empty())
+            {
                 bool early_termination = false;
-                for (int group_idx = result.size() - 2; 
-                     group_idx >= 0 && !empty_bin_indices.empty() && !early_termination; 
-                     --group_idx) {
-                    
-                    for (int bin_idx = result[group_idx].size() - 1; 
-                         bin_idx >= 0 && !empty_bin_indices.empty() && !early_termination; 
-                         --bin_idx) {
-                        
-                        auto& donor_bin = result[group_idx][bin_idx];
-                        if (donor_bin.size() >= 2) {
+                for (int group_idx = result.size() - 2;
+                     group_idx >= 0 && !empty_bin_indices.empty() && !early_termination; --group_idx)
+                {
+                    for (int bin_idx = result[group_idx].size() - 1;
+                         bin_idx >= 0 && !empty_bin_indices.empty() && !early_termination; --bin_idx)
+                    {
+                        auto &donor_bin = result[group_idx][bin_idx];
+                        if (donor_bin.size() >= 2)
+                        {
                             int item = donor_bin.back();
                             donor_bin.pop_back();
-                            
+
                             size_t target_bin_idx = empty_bin_indices.back();
                             empty_bin_indices.pop_back();
                             target_group[target_bin_idx].push_back(item);
-                        } else if (donor_bin.size() <= 1) {
+                        }
+                        else if (donor_bin.size() <= 1)
+                        {
                             early_termination = true;
                         }
                     }
                 }
 
-                if (!empty_bin_indices.empty()) {
+                if (!empty_bin_indices.empty())
+                {
                     fallback_to_repeat = true;
                 }
             }
 
-            if (fallback_to_repeat) {
+            if (fallback_to_repeat)
+            {
                 int source_bin_idx = 0;
-                for (size_t target_bin_idx = 0; target_bin_idx < target_group.size(); ++target_bin_idx) {
-                    if (target_group[target_bin_idx].empty() && source_bin_idx < source_group.size()) {
+                for (size_t target_bin_idx = 0; target_bin_idx < target_group.size(); ++target_bin_idx)
+                {
+                    if (target_group[target_bin_idx].empty() && source_bin_idx < source_group.size())
+                    {
                         target_group[target_bin_idx] = source_group[source_bin_idx++];
                     }
                 }
@@ -349,12 +414,9 @@ std::vector<std::vector<std::vector<int>>> ogbfd(
     }
 }
 
-PYBIND11_MODULE(ogbfd, m) {
+PYBIND11_MODULE(ogbfd, m)
+{
     m.doc() = "Optimized Grouped BFD (Best Fit Decreasing) algorithm implementation";
-    m.def("ogbfd", &ogbfd, "Optimized Grouped BFD algorithm",
-          py::arg("lengths"),
-          py::arg("batch_max_length"),
-          py::arg("bins_per_group") = 1,
-          py::arg("item_max_length") = -1,
-          py::arg("strategy") = 0);
+    m.def("ogbfd", &ogbfd, "Optimized Grouped BFD algorithm", py::arg("lengths"), py::arg("batch_max_length"),
+          py::arg("bins_per_group") = 1, py::arg("item_max_length") = -1, py::arg("strategy") = 0);
 }

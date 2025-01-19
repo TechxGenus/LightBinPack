@@ -12,5 +12,17 @@ from lightbinpack.cpp.radix_merge import radix_merge
 from lightbinpack.cpp.load_balance import load_balance
 
 __version__ = "0.0.4"
-__all__ = ["ffd", "nf", "bfd", "obfd", "obfdp", "ogbfd", "ogbfdp", "ohgbfd", "oshgbfd", 
-           "radix_sort", "radix_merge", "load_balance"]
+__all__ = [
+    "ffd",
+    "nf",
+    "bfd",
+    "obfd",
+    "obfdp",
+    "ogbfd",
+    "ogbfdp",
+    "ohgbfd",
+    "oshgbfd",
+    "radix_sort",
+    "radix_merge",
+    "load_balance",
+]

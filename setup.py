@@ -3,24 +3,24 @@ import pybind11
 import sys
 
 extra_compile_args = [
-    '-O3',
-    '-march=native',
-    '-ffast-math',
-    '-fopenmp',
+    "-O3",
+    "-march=native",
+    "-ffast-math",
+    "-fopenmp",
 ]
 
-if sys.platform == 'win32':
-    extra_compile_args = ['/O2', '/arch:AVX2', '/openmp']
+if sys.platform == "win32":
+    extra_compile_args = ["/O2", "/arch:AVX2", "/openmp"]
     extra_link_args = []
 else:
-    extra_link_args = ['-fopenmp']
+    extra_link_args = ["-fopenmp"]
 
 ext_modules = [
     Extension(
         "lightbinpack.cpp.ffd",
         ["lightbinpack/cpp/ffd.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -28,7 +28,7 @@ ext_modules = [
         "lightbinpack.cpp.nf",
         ["lightbinpack/cpp/nf.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -36,7 +36,7 @@ ext_modules = [
         "lightbinpack.cpp.bfd",
         ["lightbinpack/cpp/bfd.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -44,7 +44,7 @@ ext_modules = [
         "lightbinpack.cpp.obfd",
         ["lightbinpack/cpp/obfd.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -52,7 +52,7 @@ ext_modules = [
         "lightbinpack.cpp.obfdp",
         ["lightbinpack/cpp/obfdp.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -60,7 +60,7 @@ ext_modules = [
         "lightbinpack.cpp.ogbfd",
         ["lightbinpack/cpp/ogbfd.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -68,7 +68,7 @@ ext_modules = [
         "lightbinpack.cpp.ogbfdp",
         ["lightbinpack/cpp/ogbfdp.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -76,7 +76,7 @@ ext_modules = [
         "lightbinpack.cpp.ohgbfd",
         ["lightbinpack/cpp/ohgbfd.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -84,7 +84,7 @@ ext_modules = [
         "lightbinpack.cpp.radix_sort",
         ["lightbinpack/cpp/radix_sort.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -92,7 +92,7 @@ ext_modules = [
         "lightbinpack.cpp.radix_merge",
         ["lightbinpack/cpp/radix_merge.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -100,7 +100,7 @@ ext_modules = [
         "lightbinpack.cpp.oshgbfd",
         ["lightbinpack/cpp/oshgbfd.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -108,7 +108,7 @@ ext_modules = [
         "lightbinpack.cpp.load_balance",
         ["lightbinpack/cpp/load_balance.cpp"],
         include_dirs=[pybind11.get_include()],
-        language='c++',
+        language="c++",
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
     ),
@@ -122,7 +122,7 @@ setup(
     url="https://github.com/TechxGenus/LightBinPack",
     packages=find_packages(),
     package_data={
-        'lightbinpack': ['cpp/*.cpp'],
+        "lightbinpack": ["cpp/*.cpp"],
     },
     ext_modules=ext_modules,
     python_requires=">=3.6",
