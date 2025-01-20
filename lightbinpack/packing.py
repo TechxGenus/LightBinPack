@@ -15,7 +15,9 @@ class PackingStrategy(Enum):
     OGBFD = "ogbfd"  # Optimized Grouped Best Fit Decreasing
     OGBFDP = "ogbfdp"  # Parallel Optimized Grouped Best Fit Decreasing
     OHGBFD = "ohgbfd"  # Optimized Heterogeneous Grouped Best Fit Decreasing
-    OSHGBFD = "oshgbfd"  # Optimized Sequential Heterogeneous Grouped Best Fit Decreasing
+    OSHGBFD = (
+        "oshgbfd"  # Optimized Sequential Heterogeneous Grouped Best Fit Decreasing
+    )
 
 
 class PackingVariant(Enum):
@@ -145,9 +147,7 @@ def pack(
             return obfdp(lengths, batch_max_length, item_max_length, parallel_strategy)
 
         elif strategy == PackingStrategy.OGBFD:
-            return ogbfd(
-                lengths, batch_max_length, dp_size, item_max_length
-            )
+            return ogbfd(lengths, batch_max_length, dp_size, item_max_length)
 
         elif strategy == PackingStrategy.OGBFDP:
             return ogbfdp(
