@@ -12,7 +12,7 @@ from lightbinpack.cpp.radix_merge import radix_merge
 from lightbinpack.cpp.load_balance import load_balance
 from lightbinpack.packing import pack, PackingStrategy
 
-__version__ = "0.0.4"
+__version__ = "0.1.0"
 __all__ = [
     "ffd",
     "nf",
