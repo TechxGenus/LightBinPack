@@ -25,10 +25,10 @@ print("pack with strategy nf:", results_nf)
 print("pack with strategy ffd:", results_ffd)
 print("pack with strategy bfd:", results_bfd)
 
+from lightbinpack import obfd, obfdp, ogbfd, ogbfdp, ohgbfd, oshgbfd  # noqa: E402
+
 items = [2, 1, 3, 2, 1]
 batch_max_length = 4
-
-from lightbinpack import obfd, obfdp, ogbfd, ogbfdp, ohgbfd, oshgbfd  # noqa: E402
 
 result_obfd = obfd(items, batch_max_length)
 result_obfdp = obfdp(items, batch_max_length)
