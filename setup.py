@@ -129,6 +129,7 @@ setup(
     python_requires=">=3.6",
     install_requires=[
         "pybind11>=2.6.0",
+        "numpy>=1.19.0",
     ],
     zip_safe=False,
     options={

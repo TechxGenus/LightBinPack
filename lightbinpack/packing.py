@@ -1,5 +1,6 @@
 from enum import Enum
 import warnings
+import numpy as np
 from typing import List, Union, Optional, Tuple
 from lightbinpack import nf, ffd, bfd, obfd, obfdp, ogbfd, ogbfdp, ohgbfd, oshgbfd
 
@@ -37,6 +38,9 @@ def pack(
     enable_parallel: bool = False,
     parallel_strategy: int = 0,
     weights: Optional[List[int]] = [],
+    random_seed: Optional[int] = None,
+    add_noise: bool = False,
+    noise_scale: float = 0.01,
 ) -> Union[List[List[int]], List[List[List[int]]], List[Tuple[int, List[List[int]]]]]:
     """
     Unified packing function API
@@ -54,6 +58,9 @@ def pack(
         enable_parallel: Whether to enable parallel processing (for parallel algorithms)
         parallel_strategy: Strategy for parallel algorithms (0 or 1)
         weights: Optional weights for heterogeneous algorithms (OHGBFD/OSHGBFD)
+        random_seed: Optional random seed for reproducible randomization. If None, uses system time
+        add_noise: Whether to add small integer noise to lengths to create randomization
+        noise_scale: Scale factor for noise (as fraction of max length), default 0.01
 
     Returns:
         Different formats of packing results based on strategy:
@@ -104,6 +111,33 @@ def pack(
     if not lengths:
         return []
 
+    working_lengths = lengths
+    if add_noise and lengths:
+        if (
+            strategy == PackingStrategy.NF
+            or strategy == PackingStrategy.FFD
+            or strategy == PackingStrategy.BFD
+        ):
+            raise ValueError("add_noise is not supported for NF, FFD, and BFD")
+        if random_seed is not None:
+            np.random.seed(random_seed)
+        lengths_array = np.array(lengths, dtype=int)
+        max_length = np.max(lengths_array)
+        noise_magnitude = max(1, int(max_length * noise_scale))
+        noise = np.random.randint(
+            -noise_magnitude, noise_magnitude + 1, size=len(lengths_array)
+        )
+        noisy_lengths = lengths_array + noise
+        if strategy == PackingStrategy.OSHGBFD:
+            min_batch_max = min(min(sublist) for sublist in batch_max_length if sublist)
+            noisy_lengths = np.minimum(noisy_lengths, min_batch_max)
+        elif strategy == PackingStrategy.OHGBFD:
+            min_batch_max = min(batch_max_length)
+            noisy_lengths = np.minimum(noisy_lengths, min_batch_max)
+        else:
+            noisy_lengths = np.minimum(noisy_lengths, int(batch_max_length))
+        working_lengths = np.maximum(noisy_lengths, 1).astype(int).tolist()
+
     if strategy == PackingStrategy.OSHGBFD:
         if not isinstance(batch_max_length, (list, tuple)) or not all(
             isinstance(sublist, (list, tuple))
@@ -132,33 +166,39 @@ def pack(
 
     try:
         if strategy == PackingStrategy.NF:
-            return nf(lengths, batch_max_length)
+            return nf(working_lengths, batch_max_length)
 
         elif strategy == PackingStrategy.FFD:
-            return ffd(lengths, batch_max_length)
+            return ffd(working_lengths, batch_max_length)
 
         elif strategy == PackingStrategy.BFD:
-            return bfd(lengths, batch_max_length)
+            return bfd(working_lengths, batch_max_length)
 
         elif strategy == PackingStrategy.OBFD:
-            return obfd(lengths, batch_max_length, item_max_length)
+            return obfd(working_lengths, batch_max_length, item_max_length)
 
         elif strategy == PackingStrategy.OBFDP:
-            return obfdp(lengths, batch_max_length, item_max_length, parallel_strategy)
+            return obfdp(
+                working_lengths, batch_max_length, item_max_length, parallel_strategy
+            )
 
         elif strategy == PackingStrategy.OGBFD:
-            return ogbfd(lengths, batch_max_length, dp_size, item_max_length)
+            return ogbfd(working_lengths, batch_max_length, dp_size, item_max_length)
 
         elif strategy == PackingStrategy.OGBFDP:
             return ogbfdp(
-                lengths, batch_max_length, dp_size, item_max_length, parallel_strategy
+                working_lengths,
+                batch_max_length,
+                dp_size,
+                item_max_length,
+                parallel_strategy,
             )
 
         elif strategy == PackingStrategy.OHGBFD:
-            return ohgbfd(lengths, batch_max_length, item_max_length, weights)
+            return ohgbfd(working_lengths, batch_max_length, item_max_length, weights)
 
         elif strategy == PackingStrategy.OSHGBFD:
-            return oshgbfd(lengths, batch_max_length, item_max_length, weights)
+            return oshgbfd(working_lengths, batch_max_length, item_max_length, weights)
 
     except Exception as e:
         raise RuntimeError(f"Packing failed with strategy {strategy}: {str(e)}")
