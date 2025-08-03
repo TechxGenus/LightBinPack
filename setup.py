@@ -1,6 +1,7 @@
 from setuptools import setup, Extension, find_packages
 import pybind11
 import sys
+import multiprocessing
 
 extra_compile_args = [
     "-O3",
@@ -129,4 +130,10 @@ setup(
     install_requires=[
         "pybind11>=2.6.0",
     ],
+    zip_safe=False,
+    options={
+        "build_ext": {
+            "parallel": multiprocessing.cpu_count() // 2 + 1,
+        }
+    },
 )
