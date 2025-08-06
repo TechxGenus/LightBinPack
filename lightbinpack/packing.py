@@ -119,12 +119,10 @@ def pack(
             or strategy == PackingStrategy.BFD
         ):
             raise ValueError("add_noise is not supported for NF, FFD, and BFD")
-        if random_seed is not None:
-            np.random.seed(random_seed)
         lengths_array = np.array(lengths, dtype=int)
         max_length = np.max(lengths_array)
         noise_magnitude = max(1, int(max_length * noise_scale))
-        noise = np.random.randint(
+        noise = np.random.default_rng(random_seed).integers(
             -noise_magnitude, noise_magnitude + 1, size=len(lengths_array)
         )
         noisy_lengths = lengths_array + noise
